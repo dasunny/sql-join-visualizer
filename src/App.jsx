@@ -6,13 +6,34 @@ export default function App(){
   useEffect(() => {
     async function runSQL(){
       // Select the best available version of DuckDB-WASM
-      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
-      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      const BUNDLES = {
+        mvp: {
+          mainModule: new URL(
+            "@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm",
+            import.meta.url
+          ).toString(),
+          mainWorker: new URL(
+            "@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js",
+            import.meta.url
+          ).toString(),
+        },
+        eh: {
+          mainModule: new URL(
+            "@duckdb/duckdb-wasm/dist/duckdb-eh.wasm",
+            import.meta.url
+          ).toString(),
+          mainWorker: new URL(
+            "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js",
+            import.meta.url
+          ).toString(),
+        },
+      };
+      const bundle = await duckdb.selectBundle(BUNDLES);
 
       //Create the worker + database
       const worker = new Worker(bundle.mainWorker);
       const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
-      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      await db.instantiate(bundle.mainModule);
 
       const conn = await db.connect();
 
