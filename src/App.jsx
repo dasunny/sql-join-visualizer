@@ -1,11 +1,13 @@
 import './App.css'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import * as duckdb from "@duckdb/duckdb-wasm"
 
 export default function App(){
+  const [rows, setRows] = useState([]);
+
   useEffect(() => {
     async function runSQL(){
-      // Select the best available version of DuckDB-WASM
+      //tell duckdb where to find its wasm/worker files locally
       const BUNDLES = {
         mvp: {
           mainModule: new URL(
@@ -61,8 +63,12 @@ export default function App(){
         JOIN offices o ON e.officeCode = o.officeCode;
         `);
 
-        console.log("Query Result:");
-        console.table(result.toArray());
+        const data = result.toArray().map(r => ({
+          name: r.name,
+          city: r.city,
+        }));
+        console.log("Query Result:", data);
+        setRows(data);
     }
     runSQL();
   }, []);
@@ -71,6 +77,24 @@ export default function App(){
     <div style ={{ padding: "2rem"}}>
       <h2> SQL Join Visualizer (Prototype)</h2>
       <p>Open your browser console to see query output!</p>
+      {rows.length > 0 && (
+        <table border="1" cellPadding="6" style={{marginTop: "1rem"}}>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>City</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={index}>
+                  <td>{row.name}</td>
+                  <td>{row.city}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+      )}
     </div>
   );
 }
