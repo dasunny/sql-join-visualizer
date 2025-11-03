@@ -1,35 +1,55 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import { useEffect } from 'react'
+import * as duckdb from "@duckdb/duckdb-wasm"
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App(){
+  useEffect(() => {
+    async function runSQL(){
+      // Select the best available version of DuckDB-WASM
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+
+      //Create the worker + database
+      const worker = new Worker(bundle.mainWorker);
+      const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+
+      const conn = await db.connect();
+
+      //Creating some sample tables
+      await conn.query(`
+        CREATE TABLE employees (id INTEGER, name VARCHAR, officeCode INTEGER);
+        INSERT INTO employees VALUES
+          (1, 'ALICE', 1),
+          (2, 'Bob', 2),
+          (3, 'Charlie', 1);
+        `);
+
+      await conn.query(`
+        CREATE TABLE offices (officeCode INTEGER, city VARCHAR);
+        INSERT INTO offices VALUES
+          (1, 'New York'),
+          (2, 'San Francisco');
+        `);
+
+      //Running a sample JOIN query
+
+      const result = await conn.query(`
+        SELECT e.name, o.city
+        FROM employees e
+        JOIN offices o ON e.officeCode = o.officeCode;
+        `);
+
+        console.log("Query Result:");
+        console.table(result.toArray());
+    }
+    runSQL();
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div style ={{ padding: "2rem"}}>
+      <h2> SQL Join Visualizer (Prototype)</h2>
+      <p>Open your browser console to see query output!</p>
+    </div>
+  );
 }
-
-export default App
