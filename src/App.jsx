@@ -13,11 +13,34 @@ FROM employees e
 JOIN offices o ON e.officeCode = o.officeCode;
 `);
 
+  // source tables  
   const [employeesTable, setEmployeesTable] = useState([]);
   const [officesTable, setOfficesTable] = useState([]);
 
+  // highlighted values (for source tables)
+  const [highlightedEmployeeNames, setHighlightedEmployeeNames] = useState([]);
+  const [highlightedOfficeCities, setHighlightedOfficeCities] = useState([]);
+
   // holds the DuckDB connection so we can reuse it
   const connRef = useRef(null);
+
+  // helper: given a result array, update highlight sets
+  function updateHighlightsFromRows(resultRows){
+    const nameSet = new Set();
+    const citySet = new Set();
+
+    for (const row of resultRows){
+      if ("name" in row && row.name != null){
+        nameSet.add(row.name);
+      }
+      if ("city" in row && row.city != null){
+        citySet.add(row.city);
+      }
+    }
+
+    setHighlightedEmployeeNames([...nameSet]);
+    setHighlightedOfficeCities([...citySet]);
+  }
 
   // run once on mount: start DuckDB, create tables, run default query
   useEffect(() => {
@@ -63,14 +86,19 @@ JOIN offices o ON e.officeCode = o.officeCode;
         INSERT INTO employees VALUES
           (1, 'ALICE', 1),
           (2, 'Bob', 2),
-          (3, 'Charlie', 1);
+          (3, 'Charlie', 1),
+          (4, 'Diana', 3),
+          (5, 'Dawson', 5),
+          (6, 'Wasim', 3);
       `);
 
       await conn.query(`
         CREATE TABLE offices (officeCode INTEGER, city VARCHAR);
         INSERT INTO offices VALUES
           (1, 'New York'),
-          (2, 'San Francisco');
+          (2, 'San Francisco'),
+          (3, 'London'),
+          (4, 'Tokyo');
       `);
 
       // 5) Load the source tables
@@ -90,6 +118,7 @@ JOIN offices o ON e.officeCode = o.officeCode;
       const initialRows = initialResult.toArray(); // keep as row proxies
       console.log("Initial Query Result:", initialRows);
       setRows(initialRows);
+      updateHighlightsFromRows(initialRows);
     }
 
     runSQL();
@@ -107,6 +136,7 @@ JOIN offices o ON e.officeCode = o.officeCode;
       const data = result.toArray(); // keep DuckDB's row proxies
       console.log("User Query Result:", data);
       setRows(data);
+      updateHighlightsFromRows(data);
     } catch (err) {
       console.error("SQL Error:", err);
       alert("There was an error running your query. Check the console.");
@@ -162,8 +192,18 @@ JOIN offices o ON e.officeCode = o.officeCode;
       <hr style={{ marginTop: "2rem" }} />
       <h2>Source Tables</h2>
 
-      <DataTable title="employees" rows={employeesTable} />
-      <DataTable title="offices" rows={officesTable} />
+      <DataTable
+        title="employees"
+        rows={employeesTable}
+        highlightKey="name"
+        highlightedValues={highlightedEmployeeNames}
+        />
+      <DataTable
+        title="offices"
+        rows={officesTable}
+        highlightKey="city"
+        highlightedValues={highlightedOfficeCities}
+         />
     </div>
   );
 }
