@@ -1,6 +1,7 @@
 import "./App.css";
 import { useEffect, useState, useRef } from "react";
 import * as duckdb from "@duckdb/duckdb-wasm";
+import DataTable from "./DataTable";
 
 export default function App() {
   // rows = current query result (array of DuckDB row proxies)
@@ -11,6 +12,10 @@ SELECT e.name, o.city
 FROM employees e
 JOIN offices o ON e.officeCode = o.officeCode;
 `);
+
+  const [employeesTable, setEmployeesTable] = useState([]);
+  const [officesTable, setOfficesTable] = useState([]);
+
   // holds the DuckDB connection so we can reuse it
   const connRef = useRef(null);
 
@@ -68,7 +73,14 @@ JOIN offices o ON e.officeCode = o.officeCode;
           (2, 'San Francisco');
       `);
 
-      // 5) run the default JOIN query (same as initial textarea)
+      // 5) Load the source tables
+      const empResult = await conn.query("SELECT * FROM employees;");
+      setEmployeesTable(empResult.toArray());
+
+      const offResult = await conn.query("SELECT * FROM offices;");
+      setOfficesTable(offResult.toArray());
+
+      // 6) run the default JOIN query (same as initial textarea)
       const initialResult = await conn.query(`
         SELECT e.name, o.city
         FROM employees e
@@ -102,8 +114,7 @@ JOIN offices o ON e.officeCode = o.officeCode;
   }
 
   // figure out column names dynamically from the first row (if any)
-  const columnNames =
-    rows.length > 0 ? Object.keys(rows[0]) : [];
+  const columnNames = rows.length > 0 ? Object.keys(rows[0]) : [];
 
   return (
     <div style={{ padding: "2rem" }}>
@@ -146,6 +157,13 @@ JOIN offices o ON e.officeCode = o.officeCode;
           </tbody>
         </table>
       )}
+
+      {/* Source tables section */}
+      <hr style={{ marginTop: "2rem" }} />
+      <h2>Source Tables</h2>
+
+      <DataTable title="employees" rows={employeesTable} />
+      <DataTable title="offices" rows={officesTable} />
     </div>
   );
 }
